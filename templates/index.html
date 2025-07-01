@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voter ID Verification System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(to bottom, #d9f0ff, #f5f5f5);
+            color: #000;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 50px auto;
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #003366;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .input-group input, button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        button {
+            background-color: #003366;
+            color: #fff;
+            font-weight: bold;
+            border: none;
+            transition: all 0.3s;
+        }
+
+        button:hover {
+            background-color: #00509e;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            font-size: 18px;
+            color: #003366;
+            margin-top: 10px;
+        }
+
+        .error {
+            display: none;
+            text-align: center;
+            color: red;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        .user-info {
+            margin-top: 20px;
+        }
+
+        .user-info h2 {
+            color: #003366;
+        }
+
+        #userTable {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        #userTable th, #userTable td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+
+        #userTable th {
+            background-color: #d9f0ff;
+            color: #003366;
+        }
+
+        #userTable tr:nth-child(even) {
+            background-color: #f5f5f5;
+        }
+
+        .match-true {
+            background-color: #009688;
+            color: white;
+        }
+
+        .match-false {
+            background-color: #f44336;
+            color: white;
+        }
+
+        .footer-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 30px;
+            gap: 15px; /* Added spacing */
+        }
+
+        .action-button {
+            padding: 10px 20px;
+            font-size: 14px;
+            border-radius: 5px;
+            cursor: pointer;
+            flex: 1;
+            text-align: center;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 50px;
+            color: #666;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .footer-actions {
+                flex-direction: column;
+                gap: 10px; /* Adjusted spacing for mobile view */
+            }
+
+            .action-button {
+                flex: none;
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Voter ID Verification System</h1>
+
+        <!-- File Upload Form -->
+        <form id="uploadForm" enctype="multipart/form-data">
+            <div class="input-group">
+                <label for="fileInput">Upload ID Image:</label>
+                <input type="file" id="fileInput" name="file" required>
+            </div>
+            <button type="submit">Upload and Extract Info</button>
+        </form>
+
+        <div class="loading" id="loadingIndicator">Processing...</div>
+        <div class="error" id="errorMessage">An error occurred, please try again.</div>
+
+        <!-- Extracted Information -->
+        <div class="user-info">
+            <h2>Extracted Information</h2>
+            <p>Name: <input type="text" id="name" value="N/A"></p>
+            <p>DOB: <input type="text" id="dob" value="N/A"></p>
+            <p>Gender: <input type="text" id="gender" value="N/A"></p>
+        </div>
+
+        <div class="input-group">
+            <button id="filterButton">Filter Users</button>
+        </div>
+
+        <!-- User Table -->
+        <h2>User Table</h2>
+        <table id="userTable">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>DOB</th>
+                    <th>Gender</th>
+                    <th>Status</th>
+                    <th>Update</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+
+        <!-- Footer Buttons -->
+        <div class="footer-actions">
+            <button id="viewStatsButton" class="action-button">View Statistics</button>
+            <button id="saveButton" class="action-button">Save</button>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2024 Voter ID Verification System. All rights reserved.</p>
+    </footer>
+
+    <script>
+        // Upload Form Submission
+        document.getElementById('uploadForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            const formData = new FormData();
+            formData.append('file', document.getElementById('fileInput').files[0]);
+
+            document.getElementById('loadingIndicator').style.display = 'block';
+
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('loadingIndicator').style.display = 'none';
+                if (data.error) {
+                    document.getElementById('errorMessage').style.display = 'block';
+                    return;
+                }
+                document.getElementById('name').value = data.NAME || 'N/A';
+                document.getElementById('dob').value = data.DOB || 'N/A';
+                document.getElementById('gender').value = data.GENDER || 'N/A';
+            })
+            .catch(() => {
+                document.getElementById('loadingIndicator').style.display = 'none';
+                document.getElementById('errorMessage').style.display = 'block';
+            });
+        });
+
+        // Fetch and Display Users
+        window.onload = function () {
+            fetch('/get_users')
+                .then(response => response.json())
+                .then(users => {
+                    const tableBody = document.querySelector('#userTable tbody');
+                    tableBody.innerHTML = '';
+                    users.forEach(user => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${user.name}</td>
+                            <td>${user.dob}</td>
+                            <td>${user.gender}</td>
+                            <td class="${user.match ? 'match-true' : 'match-false'}">
+                                ${user.match ? 'Voted' : 'Not Voted'}
+                            </td>
+                            <td>
+                                <input type="checkbox" data-user-id="${user._id}" ${user.match ? 'checked' : ''}>
+                            </td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
+                });
+        };
+
+        document.getElementById('filterButton').addEventListener('click', function () {
+            const filterText = document.getElementById('name').value.toLowerCase();
+            const rows = document.querySelectorAll('#userTable tbody tr');
+            rows.forEach(row => {
+                const nameCell = row.cells[0].textContent.toLowerCase();
+                row.style.display = nameCell.includes(filterText) ? '' : 'none';
+            });
+        });
+
+        // Save Match Status
+        document.getElementById('saveButton').addEventListener('click', function () {
+            const rows = document.querySelectorAll('#userTable tbody tr');
+            rows.forEach(row => {
+                const checkbox = row.querySelector('input[type="checkbox"]');
+                const userId = checkbox.dataset.userId;
+                const match = checkbox.checked;
+
+                fetch('/save_match', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId, match: match })
+                });
+            });
+
+            alert('Match statuses updated successfully!');
+        });
+    </script>
+</body>
+</html>
